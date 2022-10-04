@@ -26,8 +26,8 @@ def prepare_ds(xx,width):
 
     return Xr,Yr
 
-TOTAL = 1000
-X = pd.read_csv("data/XRP-USD.csv")["low"].values #np.array([(np.sin((i+np.random.rand())/np.pi)* 10)/i for i in range(1,TOTAL+1)])
+STREAM = "low"
+X = pd.read_csv("data/XRP-USD.csv")[STREAM].values 
 
 TEST = 200
 
@@ -57,12 +57,15 @@ yp = model.predict(Xt)
 print("Predict:",model.predict(np.array([X[-WIDTH:]])))
 print("Pred. Longer:",yp[-1])
 print("Actual Longer:",Yt[-1])
+import eval_agent
+print(eval_agent.profit_agent(yp,Yt))
+print(eval_agent.correct_agent(yp,Yt))
+
 plt.plot(yp,label="yp")
 plt.plot(Yt,label="yt")
 plt.legend()
 plt.show()
 
-print()
 
 
 
