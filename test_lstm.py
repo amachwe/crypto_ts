@@ -34,7 +34,7 @@ TEST = 200
 xt = X[-TEST:]
 xx = X[:-TEST]
 
-WIDTH=5
+WIDTH=31
 
 Xr,Yr = prepare_ds(xx,WIDTH)
 Xt, Yt = prepare_ds(xt,WIDTH)
@@ -43,6 +43,7 @@ Xt, Yt = prepare_ds(xt,WIDTH)
 model = models.Sequential()
 model.add(layers.Dense(WIDTH))
 
+model.add(layers.Dense(20))
 model.add(layers.Dense(10))
 #model.add(layers.LSTM(150,input_shape=(1,1)))
 model.add(layers.Dense(1))
@@ -54,6 +55,8 @@ yp = []#Yt[0]
 yp = model.predict(Xt)
 
 print("Predict:",model.predict(np.array([X[-WIDTH:]])))
+print("Pred. Longer:",yp[-1])
+print("Actual Longer:",Yt[-1])
 plt.plot(yp,label="yp")
 plt.plot(Yt,label="yt")
 plt.legend()
