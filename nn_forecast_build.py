@@ -14,7 +14,7 @@ def update(sym):
     d1.to_csv(f"data/{sym}.csv")
     d2.to_csv(f"data/{sym}-price.csv")
 
-#update("XRP-USD")
+update("XRP-USD")
 def prepare_ds(xx,width):
     Xr = []
     Yr = []
@@ -26,6 +26,7 @@ def prepare_ds(xx,width):
 
     return Xr,Yr
 
+champion_model_path = "models/champion"
 STREAM = "low"
 X = pd.read_csv("data/XRP-USD.csv")[STREAM].values 
 
@@ -40,26 +41,41 @@ Xr,Yr = prepare_ds(xx,WIDTH)
 Xt, Yt = prepare_ds(xt,WIDTH)
 
 
-model = models.Sequential()
-model.add(layers.Dense(WIDTH))
+challenger = models.Sequential()
+challenger.add(layers.Dense(WIDTH))
 
-model.add(layers.Dense(20))
-model.add(layers.Dense(10))
-#model.add(layers.LSTM(150,input_shape=(1,1)))
-model.add(layers.Dense(1))
+challenger.add(layers.Dense(20))
+challenger.add(layers.Dense(10))
+challenger.add(layers.Dense(1))
 
 
-model.compile(optimizer='adam',loss='mse',metrics=['accuracy'])
-model.fit(Xr,Yr,batch_size=10,epochs=20)
+challenger.compile(optimizer='adam',loss='mse',metrics=['accuracy'])
+challenger.fit(Xr,Yr,batch_size=10,epochs=20)
 yp = []#Yt[0]
-yp = model.predict(Xt)
+yp = challenger.predict(Xt)
 
-print("Predict:",model.predict(np.array([X[-WIDTH:]])))
+print("Predict:",challenger.predict(np.array([X[-WIDTH:]])))
 print("Pred. Longer:",yp[-1])
 print("Actual Longer:",Yt[-1])
 import eval_agent
-print(eval_agent.profit_agent(yp,Yt))
-print(eval_agent.correct_agent(yp,Yt))
+import datetime
+chl_perf1 = eval_agent.profit_agent(yp,Yt)
+chl_perf2 = eval_agent.correct_agent(yp,Yt)
+try:
+    champion = models.load_model(champion_model_path)
+    yp_chm = champion.predict(Xt)
+    chm_perf1 = eval_agent.profit_agent(yp_chm,Yt)
+    chm_perf2 = eval_agent.correct_agent(yp_chm,Yt)
+    if chl_perf2 > chm_perf2:
+        print("Challenger won: ",chl_perf2, " > ", chm_perf2)
+        print("Other perf: ",chl_perf1, " > ", chm_perf1)
+        challenger.save(champion_model_path)
+        print("New Champion ",datetime.datetime.today())
+    else:
+        print("Champion won: ",chm_perf2,"  vs ",chl_perf2)
+except:
+    challenger.save(champion_model_path)
+
 
 plt.plot(yp,label="yp")
 plt.plot(Yt,label="yt")
