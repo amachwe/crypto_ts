@@ -13,14 +13,15 @@ champion_model_path = "models/champion"
 STREAM = "low"
 WIDTH=31
 TEST=200
-WAIT_INTERVAL = 600*24
+WAIT_INTERVAL = 60*60*24 #24 hrs
 HOST = "192.168.0.12:8086"
 TOKEN = "_klZ_yw6Y8V7CqDesePVuAqWY0BMCYXjOJ3LshdQJpgwfsPrhtvtNZbGJlebZAxCYuGafXpPlnTX11MNpgdOcQ=="
 ORG = "fef"
 BUCKET = "model-ops"
 SYM = "XRP-USD"
 model_id = SYM+"_"+STREAM
-
+ENABLE_DB_WRITE = True
+ENABLE_TIMER = True
 def update(sym):
     d1,d2 = dd.to_csv(sym)
 
@@ -30,13 +31,13 @@ def update(sym):
 
 
 def write_model_perf(client,sym,key,value,time,id=model_id):
-    
-    t = int(datetime.datetime.timestamp(time))*1000_000_000
-    print(1665086257573000000,t)
-    print(">",sym,id,time,t,key,value)
-    p = influxdb_client.Point(sym).tag("id",id).field(key,float(value)).time(t)
-    with client.write_api(write_options=SYNCHRONOUS) as w:
-        w.write(org=ORG,bucket=BUCKET,record=p)
+    if ENABLE_DB_WRITE:
+        t = int(datetime.datetime.timestamp(time))*1000_000_000
+        p = influxdb_client.Point(sym).tag("id",id).field(key,float(value)).time(t)
+        with client.write_api(write_options=SYNCHRONOUS) as w:
+            w.write(org=ORG,bucket=BUCKET,record=p)
+    else:
+        print("Data > ",sym," : ",id,"  ->  ",time,t,key,value)
 
 
 def prepare_ds(xx,width):
@@ -107,7 +108,9 @@ async def run(client):
                 challenger.save(champion_model_path)
         except Exception as e:
             print(e)
-        await aio.sleep(WAIT_INTERVAL)
+            
+        if ENABLE_TIMER:
+            await aio.sleep(WAIT_INTERVAL)
 
 if __name__ == "__main__":
 
