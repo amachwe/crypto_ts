@@ -5,7 +5,7 @@ import pandas as pd
 
 def to_csv(symbol):
     
-    stream = dc.get_data_single(symbol)[0]
+    stream = dc.get_data_single(symbol, agg_dur="1d",agg_fn="mean")[0]
 
     size_ = len(stream["open"])
     size_p = len(stream["price"])
@@ -16,13 +16,8 @@ def to_csv(symbol):
     
     df["seq"] = [i for i in range(0, size_)]
 
-    dfp = pd.DataFrame()
-
-    dfp["price"] = stream["price"]
-    dfp["time"] = stream["time_price"]
-    dfp["seq"] = [i for i in range(0,size_p)]
-
-    return df,dfp
+    
+    return df
 
     
 

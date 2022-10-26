@@ -23,10 +23,10 @@ model_id = SYM+"_"+STREAM
 ENABLE_DB_WRITE = True
 ENABLE_TIMER = True
 def update(sym):
-    d1,d2 = dd.to_csv(sym)
+    d1 = dd.to_csv(sym)
 
     d1.to_csv(f"data/{sym}.csv")
-    d2.to_csv(f"data/{sym}-price.csv")
+  
 
 
 
@@ -37,7 +37,7 @@ def write_model_perf(client,sym,key,value,time,id=model_id):
         with client.write_api(write_options=SYNCHRONOUS) as w:
             w.write(org=ORG,bucket=BUCKET,record=p)
     else:
-        print("Data > ",sym," : ",id,"  ->  ",time,t,key,value)
+        print("Data > ",sym," : ",id,"  ->  ",time,0,key,value)
 
 
 def prepare_ds(xx,width):
