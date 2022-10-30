@@ -8,6 +8,7 @@ import datetime
 import asyncio as aio
 import influxdb_client
 from influxdb_client.client.write_api import SYNCHRONOUS
+import libs
 
 champion_model_path = "models/champion"
 STREAM = "low"
@@ -51,64 +52,96 @@ def prepare_ds(xx,width):
 
     return Xr,Yr
 
+def prepare_data(X):
+    xt = X[-TEST:]
+    xx = X[:-TEST]
+
+    Xr,Yr = prepare_ds(xx,WIDTH)
+    Xt, Yt = prepare_ds(xt,WIDTH)
+
+    return Xr,Yr, Xt,Yt
+
+def build_forecast_model_for_stream(Xtrain,Ytrain):
+    challenger = models.Sequential()
+    challenger.add(layers.Dense(WIDTH))
+
+    challenger.add(layers.Dense(20))
+    challenger.add(layers.Dense(10))
+    challenger.add(layers.Dense(1))
+
+    challenger.compile(optimizer='adam',loss='mse',metrics=['accuracy'])
+    challenger.fit(Xtrain,Ytrain,batch_size=10,epochs=20)
+
+    return challenger
+
+def championship(champion_model,challenger_model, Xtest,Ytest):
+    yp = []
+    yp = challenger_model.predict(Xtest)
+            
+    chl_perf1 = eval_agent.profit_agent(yp,Ytest)
+    chl_perf2 = eval_agent.correct_agent(yp,Ytest)
+
+    yp_chm = champion_model.predict(Xtest)
+    chm_perf1 = eval_agent.profit_agent(yp_chm,Ytest)
+    chm_perf2 = eval_agent.correct_agent(yp_chm,Ytest)
+    if chl_perf2 > chm_perf2:
+        print("Challenger won: ",chl_perf2, " > ", chm_perf2)
+        print("Other perf: ",chl_perf1, " > ", chm_perf1)
+        challenger_model.save(champion_model_path)
+        print("New Champion ",datetime.datetime.today())
+
+        return True, challenger_model
+    else:
+        print("Champion won: ",chm_perf2,"  vs ",chl_perf2)
+    
+        return False, champion_model
+
 
 
 async def run(client):
     while True:
         try:
-            today = datetime.datetime.today()
-            delta = datetime.timedelta(days=1)
-            yesterday = today - delta
-            print("Time: ",today, yesterday)
+            
 
             update(SYM)
             X = pd.read_csv(f"data/{SYM}.csv")[STREAM].values 
 
-            xt = X[-TEST:]
-            xx = X[:-TEST]
+            Xr,Yr,Xt,Yt = prepare_data(X)
 
-            Xr,Yr = prepare_ds(xx,WIDTH)
-            Xt, Yt = prepare_ds(xt,WIDTH)
-
-            challenger = models.Sequential()
-            challenger.add(layers.Dense(WIDTH))
-
-            challenger.add(layers.Dense(20))
-            challenger.add(layers.Dense(10))
-            challenger.add(layers.Dense(1))
-
-            challenger.compile(optimizer='adam',loss='mse',metrics=['accuracy'])
-            challenger.fit(Xr,Yr,batch_size=10,epochs=20)
-            yp = []#Yt[0]
-            yp = challenger.predict(Xt)
-            tom_pred = challenger.predict(np.array([X[-WIDTH:]]))
-            yest_actual = Yt[-1]
-            write_model_perf(client,SYM+"_predicted","pred",tom_pred[0][0],today)
-            write_model_perf(client,SYM+"_actual","actual",yest_actual,yesterday)
-            print("Predict:",tom_pred)
-            print("Pred. Longer:",yp[-1])
-            print("Actual Longer:",yest_actual)
             
-            chl_perf1 = eval_agent.profit_agent(yp,Yt)
-            chl_perf2 = eval_agent.correct_agent(yp,Yt)
+            challenger = build_forecast_model_for_stream(Xr,Yr)
+            
+            pred_model = None
             try:
                 champion = models.load_model(champion_model_path)
-                yp_chm = champion.predict(Xt)
-                chm_perf1 = eval_agent.profit_agent(yp_chm,Yt)
-                chm_perf2 = eval_agent.correct_agent(yp_chm,Yt)
-                if chl_perf2 > chm_perf2:
-                    print("Challenger won: ",chl_perf2, " > ", chm_perf2)
-                    print("Other perf: ",chl_perf1, " > ", chm_perf1)
-                    challenger.save(champion_model_path)
-                    print("New Champion ",datetime.datetime.today())
+
+                today = datetime.datetime.today()
+                delta = datetime.timedelta(days=1)
+                yesterday = today - delta
+                print("Time (t, t-1): ",today, yesterday)
+                change, pred_model = championship(champion,challenger,Xt,Yt)
+                if change:
                     write_model_perf(client,SYM+"_meta", "change",1,today)
-                else:
-                    print("Champion won: ",chm_perf2,"  vs ",chl_perf2)
-            except:
+                
+                
+            except e as IOError:
+                # No existing champion
                 challenger.save(champion_model_path)
+                pred_model = challenger
         except Exception as e:
+            print("=== Error ===")
             print(e)
-            
+
+        # Record predictions
+        
+        yp = pred_model.predict(Xt)
+        tom_pred = pred_model.predict(np.array([X[-WIDTH:]]))
+        yest_actual = Yt[-1]
+        write_model_perf(client,SYM+"_predicted","pred",tom_pred[0][0],today)
+        write_model_perf(client,SYM+"_actual","actual",yest_actual,yesterday)
+        print("Predict:",tom_pred)
+        print("Pred. Longer:",yp[-1])
+        print("Actual Longer:",yest_actual)
         if ENABLE_TIMER:
             await aio.sleep(WAIT_INTERVAL)
 
