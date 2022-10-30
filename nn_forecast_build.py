@@ -74,7 +74,7 @@ def build_forecast_model_for_stream(Xtrain,Ytrain):
 
     return challenger
 
-def championship(champion_model,challenger_model, Xtest,Ytest):
+def run_championship(champion_model,challenger_model, Xtest,Ytest):
     yp = []
     yp = challenger_model.predict(Xtest)
             
@@ -101,25 +101,25 @@ def championship(champion_model,challenger_model, Xtest,Ytest):
 async def run(client):
     while True:
         try:
-            
+            today = datetime.datetime.today()
+            delta = datetime.timedelta(days=1)
+
+            yesterday = today - delta
+
+            print("STarting: Time (t, t-1): ",today, yesterday)
 
             update(SYM)
             X = pd.read_csv(f"data/{SYM}.csv")[STREAM].values 
 
             Xr,Yr,Xt,Yt = prepare_data(X)
 
-            
             challenger = build_forecast_model_for_stream(Xr,Yr)
             
             pred_model = None
             try:
                 champion = models.load_model(champion_model_path)
+                change, pred_model = run_championship(champion,challenger,Xt,Yt)
 
-                today = datetime.datetime.today()
-                delta = datetime.timedelta(days=1)
-                yesterday = today - delta
-                print("Time (t, t-1): ",today, yesterday)
-                change, pred_model = championship(champion,challenger,Xt,Yt)
                 if change:
                     write_model_perf(client,SYM+"_meta", "change",1,today)
                 
@@ -135,8 +135,10 @@ async def run(client):
             yp = pred_model.predict(Xt)
             tom_pred = pred_model.predict(np.array([X[-WIDTH:]]))
             yest_actual = Yt[-1]
+
             write_model_perf(client,SYM+"_predicted","pred",tom_pred[0][0],today)
             write_model_perf(client,SYM+"_actual","actual",yest_actual,yesterday)
+
             print("Predict:",tom_pred)
             print("Pred. Longer:",yp[-1])
             print("Actual Longer:",yest_actual)
