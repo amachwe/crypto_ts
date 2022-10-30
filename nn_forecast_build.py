@@ -128,20 +128,23 @@ async def run(client):
                 # No existing champion
                 challenger.save(champion_model_path)
                 pred_model = challenger
+        
+
+            # Record predictions
+            
+            yp = pred_model.predict(Xt)
+            tom_pred = pred_model.predict(np.array([X[-WIDTH:]]))
+            yest_actual = Yt[-1]
+            write_model_perf(client,SYM+"_predicted","pred",tom_pred[0][0],today)
+            write_model_perf(client,SYM+"_actual","actual",yest_actual,yesterday)
+            print("Predict:",tom_pred)
+            print("Pred. Longer:",yp[-1])
+            print("Actual Longer:",yest_actual)
+
         except Exception as e:
             print("=== Error ===")
             print(e)
 
-        # Record predictions
-        
-        yp = pred_model.predict(Xt)
-        tom_pred = pred_model.predict(np.array([X[-WIDTH:]]))
-        yest_actual = Yt[-1]
-        write_model_perf(client,SYM+"_predicted","pred",tom_pred[0][0],today)
-        write_model_perf(client,SYM+"_actual","actual",yest_actual,yesterday)
-        print("Predict:",tom_pred)
-        print("Pred. Longer:",yp[-1])
-        print("Actual Longer:",yest_actual)
         if ENABLE_TIMER:
             await aio.sleep(WAIT_INTERVAL)
 
