@@ -70,7 +70,7 @@ def build_forecast_model_for_stream(Xtrain,Ytrain):
     challenger.add(layers.Dense(1))
 
     challenger.compile(optimizer='adam',loss='mse',metrics=['accuracy'])
-    challenger.fit(Xtrain,Ytrain,batch_size=10,epochs=20)
+    challenger.fit(Xtrain,Ytrain,batch_size=10,epochs=20, verbose=0)
 
     return challenger
 
