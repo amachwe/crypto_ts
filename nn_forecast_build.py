@@ -124,7 +124,7 @@ async def run(client):
                     write_model_perf(client,SYM+"_meta", "change",1,today)
                 
                 
-            except e as IOError:
+            except IOError as e:
                 # No existing champion
                 challenger.save(champion_model_path)
                 pred_model = challenger
