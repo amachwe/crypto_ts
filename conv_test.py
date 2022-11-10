@@ -22,6 +22,10 @@ filter = tf.Variable(np.array([[[-1,-1,-1],[-1,8,-1],[-1,-1,-1]],[[-1,-1,-1],[-1
 x_rs = tf.reshape(x_rgb,[1,2448,3264,3])
 f_rs = tf.reshape(filter,[3,3,3,1])
 
-y_conv = tf.nn.convolution(x_rs,f_rs)
-print(y_conv)
+filter2 = tf.reshape(tf.Variable(np.array([[-1,1],[1,-1],[-1,1]]).astype('float32')),[3,2,1,1])
+
+y_conv = tf.nn.convolution(x_rs,f_rs)   
 Image.fromarray(tf.reshape(y_conv,[2446,3262]).numpy()).show()
+y_conv = tf.nn.convolution(y_conv,filter2)
+
+Image.fromarray(tf.reshape(y_conv,[2444,3261]).numpy()).show()
